@@ -1,45 +1,56 @@
-Cricket Player Auction App
-![Built with Streamlit](https://img.shields.io/badge/Built%20With-Streamlit-blue[MIT License](https://img.shields.io/github/license/deveshc20/Cricket cricket player auction app built using Python and Streamlit. Ideal for managing team selection and bidding during local or fantasy cricket tournaments.
+🏏 Cricket Player Auction App
 
-Live Demo
-Access the live deployed app here:
-https://cricketauctionapp.streamlit.app/
+A Python and Streamlit-based cricket player auction app designed to simplify team selection and player bidding for local or fantasy cricket tournaments.
 
-Features
-Upload Players: Easily import player lists from Excel files with flexible, case-insensitive column matching.
+🌐 Live Demo
 
-Team Setup: Configure multiple teams with assigned budgets and names.
+Access the live app here: Cricket Auction App
 
-Auction Panel: Randomly pick players for auction, record bids, and mark players as sold or unsold.
+⚡ Features
 
-Manual Correction: Correct unsold players by assigning them manually to teams with price adjustments.
+Upload Players: Import player lists from Excel with flexible, case-insensitive column matching.
 
-Live Metrics: Real-time updates for total players, pending auctions, and players auctioned so far.
+Team Setup: Create multiple teams with custom names and assigned budgets.
 
-Undo and Restart: Undo last auction action or restart the entire auction anytime.
+Auction Panel: Randomly pick players, record bids, and mark them as sold or unsold.
+
+Manual Correction: Adjust unsold players manually, assign them to teams, and update prices.
+
+Live Metrics: Track total players, pending auctions, and players auctioned in real-time.
+
+Undo & Restart: Undo the last action or restart the auction anytime.
 
 Budget Overview: Clear summary of team budgets including spent and remaining funds.
 
-Export Excel: Download detailed auction results with combined and team-wise player lists including sold prices.
+Export Excel: Download detailed auction results with combined and team-wise player lists, including sold prices.
 
-Installation
+💻 Installation
+
 Install Python (3.8 or above recommended).
 
 Install required packages:
 
-bash
 pip install streamlit pandas openpyxl
-Clone this repository or download the code.
+
+
+Clone the repository or download the code:
+
+git clone https://github.com/deveshc20/Cricket-Auction-App.git
+cd Cricket-Auction-App
+
 
 Run the app:
 
-bash
 streamlit run app.py
-License
-This project is licensed under the MIT License.
 
-About
-Created by deveshc20.
-GitHub: https://github.com/deveshc20/Cricket-Auction-App
+📄 License
 
-Enjoy managing your cricket auctions! 🏏
+This project is licensed under the MIT License
+.
+
+👤 About
+
+Created by Devesh Chaudhari
+GitHub: deveshc20
+
+Enjoy managing your cricket auctions efficiently! 🎉
