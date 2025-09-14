@@ -36,3 +36,25 @@ Access the live app here: [Cricket Auction App](https://cricketauctionapp.stream
 
 ```bash
 pip install streamlit pandas openpyxl
+
+3. **Clone the repository:**
+
+git clone https://github.com/deveshc20/Cricket-Auction-App.git
+cd Cricket-Auction-App
+
+
+Run the app:
+
+streamlit run app.py
+
+📄 License
+
+This project is licensed under the MIT License
+.
+
+👤 About
+
+Created by Devesh Chaudhari
+GitHub: deveshc20
+
+Enjoy managing your cricket auctions efficiently! 🎉
