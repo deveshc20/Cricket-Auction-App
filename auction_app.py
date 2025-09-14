@@ -2,163 +2,41 @@ import streamlit as st
 import pandas as pd
 import openpyxl
 import time
+import os
 
 # ---------- SOUND EFFECT ----------
-sound_base64 = "SUQzAwAAAAAAIVRBTEIAAAAPAAABAAAAAAAAAAAAAAAAAA=="
-sound_html = f"""
-<audio autoplay>
-    <source src="data:audio/mp3;base64,{sound_base64}" type="audio/mp3">
-</audio>
-"""
+def play_sound():
+    sound_path = "assets/bell.mp3"
+    if os.path.exists(sound_path):
+        audio_file = open(sound_path, 'rb')
+        audio_bytes = audio_file.read()
+        b64 = base64.b64encode(audio_bytes).decode()
+        sound_html = f"""
+        <audio autoplay>
+            <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+        </audio>
+        """
+        st.markdown(sound_html, unsafe_allow_html=True)
 
 # ---------- PAGE CONFIG ----------
 st.set_page_config(page_title="Cricket Auction App", layout="wide")
 
-# ---------- SESSION INIT ----------
-if 'player_index' not in st.session_state:
-    st.session_state['player_index'] = 0
-if 'teams' not in st.session_state:
-    st.session_state['teams'] = []
-if 'auction_results' not in st.session_state:
-    st.session_state['auction_results'] = []
-if 'players_df' not in st.session_state:
-    st.session_state['players_df'] = None
-if 'start_time' not in st.session_state:
-    st.session_state['start_time'] = None
-if 'history' not in st.session_state:
-    st.session_state['history'] = []
-
-# ---------- HISTORY HELPERS ----------
-def push_history(action: dict):
-    st.session_state['history'].append(action)
-
-def undo_last():
-    if not st.session_state['history']:
-        return False, "Nothing to undo."
-    action = st.session_state['history'].pop()
-    df = st.session_state['players_df']
-
-    df.loc[df['Player No'] == action['player_no'], 'Auctioned'] = False
-
-    for i in range(len(st.session_state['auction_results']) - 1, -1, -1):
-        r = st.session_state['auction_results'][i]
-        if r['Player No'] == action['player_no']:
-            st.session_state['auction_results'].pop(i)
-            break
-
-    if action['type'] == 'sold':
-        team_name = action['team']
-        price = action['price']
-        for team in st.session_state['teams']:
-            if team['Team'] == team_name:
-                for j, p in enumerate(team['Players']):
-                    if p['Player No'] == action['player_no']:
-                        team['Players'].pop(j)
-                        break
-                team['Spent'] -= price
-                team['Budget'] += price
-                break
-    return True, "Last action undone."
-
-# ---------- SIDEBAR ----------
-st.sidebar.markdown("[\U0001F310 GitHub](https://github.com/deveshc20)  |  \U0001F9D1‍\U0001F4BB Created by **DC**")
+st.sidebar.markdown("[🌐 GitHub](https://github.com/deveshc20)  |  🧑‍💻 Created by **DC**")
 st.sidebar.title("🏏 Cricket Auction System")
+page = st.sidebar.radio("Go to", ["1️⃣ Upload Players", "2️⃣ Team Setup", "3️⃣ Auction Panel", "4️⃣ Summary & Export"])
 
-with st.sidebar:
-    st.markdown("---")
-    if st.button("↩️ Undo Last"):
-        ok, msg = undo_last()
-        if ok:
-            st.success(msg)
-            st.rerun()
-        else:
-            st.info(msg)
-
-    col_s1, col_s2 = st.columns(2)
-    if col_s1.button("🔁 Restart Auction"):
-        st.session_state['player_index'] = 0
-        st.session_state['auction_results'] = []
-        st.session_state['history'] = []
-        if st.session_state.get('players_df') is not None:
-            st.session_state['players_df']['Auctioned'] = False
-        for team in st.session_state['teams']:
-            team['Players'] = []
-            team['Spent'] = 0
-        st.success("Auction restarted.")
-        st.rerun()
-
-    if col_s2.button("❌ Clear All Data"):
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.success("All session data cleared.")
-        st.rerun()
-
-    st.markdown("---")
-    st.subheader("🛠️ Manual Correction for Unsold Players")
-
-    unsold_players = [p for p in st.session_state['auction_results'] if p['Team'] == 'UNSOLD']
-
-    if not unsold_players:
-        st.info("No unsold players to correct.")
-    else:
-        unsold_player_names = [f"{p['Player Name']} (Player No: {p['Player No']})" for p in unsold_players]
-        selected_unsold = st.selectbox("Select Unsold Player to Correct", options=unsold_player_names)
-
-        selected_index = unsold_player_names.index(selected_unsold)
-        selected_player = unsold_players[selected_index]
-
-        correction_team = st.selectbox("Select Team to assign", [t['Team'] for t in st.session_state['teams']], key="correction_team")
-        correction_price = st.number_input("Enter Sold Price (₹)", min_value=0, step=10, value=100, key="correction_price")
-
-        if st.button("✅ Confirm Correction"):
-            if correction_price <= 0:
-                st.warning("Enter a valid positive sold price.")
-            else:
-                # Remove old unsold auction result
-                for i, p in enumerate(st.session_state['auction_results']):
-                    if p['Player No'] == selected_player['Player No'] and p['Team'] == 'UNSOLD':
-                        st.session_state['auction_results'].pop(i)
-                        break
-
-                # Add new sold record
-                new_sold_record = {
-                    'Player No': selected_player['Player No'],
-                    'Player Name': selected_player['Player Name'],
-                    'Role': selected_player.get('Role', ''),
-                    'Team': correction_team,
-                    'Price': correction_price
-                }
-                st.session_state['auction_results'].append(new_sold_record)
-
-                # Update team ledger
-                for team in st.session_state['teams']:
-                    if team['Team'] == correction_team:
-                        if all(p['Player No'] != selected_player['Player No'] for p in team['Players']):
-                            team['Players'].append({
-                                'Player No': selected_player['Player No'],
-                                'Player Name': selected_player['Player Name'],
-                                'Role': selected_player.get('Role', '')
-                            })
-                            team['Spent'] += correction_price
-                            team['Budget'] -= correction_price
-                        break
-
-                # Record correction in history
-                push_history({
-                    'type': 'sold',
-                    'player_no': selected_player['Player No'],
-                    'team': correction_team,
-                    'price': correction_price,
-                    'player_row': selected_player
-                })
-
-                st.success(f"Corrected unsold player '{selected_player['Player Name']}' as sold to {correction_team} for ₹{correction_price}.")
-                st.rerun()
-
-# ---------- TABS NAV ----------
-tab_upload, tab_team, tab_auction, tab_summary = st.tabs(
-    ["1️⃣ Upload Players", "2️⃣ Team Setup", "3️⃣ Auction Panel", "4️⃣ Summary & Export"]
-)
+# ---------- SESSION INIT ----------
+defaults = {
+    'player_index': 0,
+    'teams': [],
+    'auction_results': [],
+    'players_df': None,
+    'current_bid': 20,
+    'current_bid_team': None,
+    'start_time': None,
+}
+for key, val in defaults.items():
+    st.session_state.setdefault(key, val)
 
 # ---------- 1️⃣ UPLOAD PLAYERS ----------
 with tab_upload:
@@ -173,22 +51,16 @@ with tab_upload:
     if uploaded_file:
         try:
             df = pd.read_excel(uploaded_file)
-            norm_cols = pd.Index(df.columns).astype(str).str.strip().str.lower()
-            df.columns = norm_cols
 
-            missing_norm = [c for c in canonical_required.keys() if c not in df.columns]
-            if missing_norm:
-                st.error(
-                    "Missing required columns (case-insensitive): "
-                    + ", ".join([canonical_required[c] for c in missing_norm])
-                )
-            else:
-                df = df.rename(columns=canonical_required)
-                if "Auctioned" not in df.columns:
-                    df["Auctioned"] = False
-                st.session_state["players_df"] = df.copy()
-                st.success("✅ File uploaded successfully! Column names matched case-insensitively.")
+            if all(col in df.columns for col in required_columns):
+                df['Auctioned'] = False
+                st.session_state['players_df'] = df.copy()
+                st.success("✅ File uploaded successfully!")
                 st.dataframe(df.head(10))
+            else:
+                missing = list(set(required_columns) - set(df.columns))
+                st.error(f"Missing columns: {', '.join(missing)}")
+
         except Exception as e:
             st.error(f"Error reading file: {e}")
     else:
@@ -224,7 +96,7 @@ with tab_team:
 with tab_auction:
     st.title("🎯 Auction Panel")
 
-    if st.session_state.get('players_df') is None or st.session_state['players_df'].empty:
+    if 'players_df' not in st.session_state or st.session_state['players_df'].empty:
         st.warning("⚠️ Upload the player list first.")
     else:
         df = st.session_state['players_df']
@@ -272,35 +144,40 @@ with tab_auction:
                 sold_button = col3.button("✅ Mark as Sold")
                 unsold_button = st.button("❌ Mark as Unsold")
 
-                if sold_button:
-                    if sold_price > 0:
-                        df.loc[df['Player No'] == player['Player No'], 'Auctioned'] = True
-                        for team in st.session_state['teams']:
-                            if team['Team'] == selected_team:
-                                team['Players'].append(dict(player))
-                                team['Spent'] += sold_price
-                                team['Budget'] -= sold_price
-                                break
-                        st.session_state['auction_results'].append({
-                            'Player No': player['Player No'],
-                            'Player Name': player['Player Name'],
-                            'Role': player['Role'],
-                            'Team': selected_team,
-                            'Price': sold_price
-                        })
-                        push_history({
-                            'type': 'sold',
-                            'player_no': player['Player No'],
-                            'team': selected_team,
-                            'price': sold_price,
-                            'player_row': dict(player)
-                        })
-                        del st.session_state['current_player']
-                        st.success(f"🎉 Player sold to {selected_team} for ₹{sold_price}!")
-                        st.markdown(sound_html, unsafe_allow_html=True)
-                        st.rerun()
-                    else:
-                        st.warning("⚠️ Enter a valid price greater than 0.")
+                    if sold_button:
+                        if sold_price > 0:
+                            df.loc[df['Player No'] == player['Player No'], 'Auctioned'] = True
+                            for team in st.session_state['teams']:
+                                if team['Team'] == selected_team:
+                                    team['Players'].append(player)
+                                    team['Spent'] += sold_price
+                                    team['Budget'] -= sold_price
+                                    break
+                            st.session_state['auction_results'].append({
+                                'Player No': player['Player No'],
+                                'Player Name': player['Player Name'],
+                                'Role': player['Role'],
+                                'Team': selected_team,
+                                'Price': sold_price
+                            })
+                            del st.session_state['current_player']
+                            st.success(f"🎉 Player sold to {selected_team} for ₹{sold_price}!")
+                            st.markdown(
+    f"""
+    <audio id="bell" autoplay>
+        <source src="data:audio/mp3;base64,{sound_base64}" type="audio/mp3">
+    </audio>
+    <script>
+        var audio = document.getElementById("bell");
+        if (audio) {{
+            audio.play().catch(error => console.log(error));
+        }}
+    </script>
+    """,
+    unsafe_allow_html=True
+)
+                        else:
+                            st.warning("⚠️ Enter a valid price greater than 0.")
 
                 if unsold_button:
                     df.loc[df['Player No'] == player['Player No'], 'Auctioned'] = True
@@ -339,7 +216,7 @@ with tab_auction:
         st.dataframe(df)
 
 # ---------- 4️⃣ SUMMARY & EXPORT ----------
-with tab_summary:
+elif page == "4️⃣ Summary & Export":
     st.title("📊 Auction Summary")
 
     if not st.session_state['auction_results']:
@@ -349,16 +226,24 @@ with tab_summary:
         st.subheader("📝 Auction Results")
         st.dataframe(res_df)
 
-        with pd.ExcelWriter("auction_results.xlsx", engine='openpyxl') as writer:
-            res_df.to_excel(writer, index=False, sheet_name="Results")
+    with pd.ExcelWriter("auction_results.xlsx", engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name="Results")
+        for team in st.session_state['teams']:
+            team_name = team['Team']
+            players = team['Players']
+            if players:
+                team_df = pd.DataFrame(players)[['Player No', 'Player Name', 'Role']]
+                team_df['Spent'] = team['Spent']
+                team_df['Remaining Budget'] = team['Budget']
+                team_df.to_excel(writer, index=False, sheet_name=team_name[:31])
 
-        with open("auction_results.xlsx", "rb") as f:
-            st.download_button(
-                label="⬇️ Download Excel File",
-                data=f.read(),
-                file_name="auction_results.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+    with open("auction_results.xlsx", "rb") as f:
+        st.download_button(
+            label="⬇️ Download Excel File",
+            data=f.read(),
+            file_name="auction_results.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
         st.subheader("👥 Team Details")
         for team in st.session_state['teams']:
