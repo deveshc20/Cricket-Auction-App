@@ -3,6 +3,53 @@ import pandas as pd
 import openpyxl
 import time
 
+# ----------- CUSTOM CSS FOR UI -----------
+st.markdown("""
+<style>
+/* Set modern font */
+html, body, [class*="css"]  {
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Style dataframes as tables */
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+thead tr {
+    background-color: #0275d8;
+    color: white;
+}
+th, td {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    text-align: left;
+}
+tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+/* Button hover */
+div.stButton > button:hover {
+    background-color: #0275d8;
+    color: white;
+}
+
+/* Sidebar spacing */
+.css-ffhzg2 {
+  margin-top: 10px;
+  margin-bottom: 20px;
+}
+
+/* Metrics spacing */
+.metric-value {
+  font-size: 2.2rem !important;
+  font-weight: 600 !important;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 # ---------- SOUND EFFECT ----------
 sound_base64 = "SUQzAwAAAAAAIVRBTEIAAAAPAAABAAAAAAAAAAAAAAAAAA=="
 sound_html = f"""
@@ -39,6 +86,7 @@ def undo_last():
     df = st.session_state['players_df']
 
     df.loc[df['Player No'] == action['player_no'], 'Auctioned'] = False
+    st.session_state['players_df'] = df.copy()
 
     for i in range(len(st.session_state['auction_results']) - 1, -1, -1):
         r = st.session_state['auction_results'][i]
@@ -81,6 +129,7 @@ with st.sidebar:
         st.session_state['history'] = []
         if st.session_state.get('players_df') is not None:
             st.session_state['players_df']['Auctioned'] = False
+            st.session_state['players_df'] = st.session_state['players_df'].copy()
         for team in st.session_state['teams']:
             team['Players'] = []
             team['Spent'] = 0
@@ -103,7 +152,6 @@ with st.sidebar:
     else:
         unsold_player_names = [f"{p['Player Name']} (Player No: {p['Player No']})" for p in unsold_players]
         selected_unsold = st.selectbox("Select Unsold Player to Correct", options=unsold_player_names)
-
         selected_index = unsold_player_names.index(selected_unsold)
         selected_player = unsold_players[selected_index]
 
@@ -114,13 +162,11 @@ with st.sidebar:
             if correction_price <= 0:
                 st.warning("Enter a valid positive sold price.")
             else:
-                # Remove old unsold auction result
                 for i, p in enumerate(st.session_state['auction_results']):
                     if p['Player No'] == selected_player['Player No'] and p['Team'] == 'UNSOLD':
                         st.session_state['auction_results'].pop(i)
                         break
 
-                # Add new sold record
                 new_sold_record = {
                     'Player No': selected_player['Player No'],
                     'Player Name': selected_player['Player Name'],
@@ -130,20 +176,19 @@ with st.sidebar:
                 }
                 st.session_state['auction_results'].append(new_sold_record)
 
-                # Update team ledger
                 for team in st.session_state['teams']:
                     if team['Team'] == correction_team:
                         if all(p['Player No'] != selected_player['Player No'] for p in team['Players']):
                             team['Players'].append({
                                 'Player No': selected_player['Player No'],
                                 'Player Name': selected_player['Player Name'],
-                                'Role': selected_player.get('Role', '')
+                                'Role': selected_player.get('Role', ''),
+                                'Price': correction_price
                             })
                             team['Spent'] += correction_price
                             team['Budget'] -= correction_price
                         break
 
-                # Record correction in history
                 push_history({
                     'type': 'sold',
                     'player_no': selected_player['Player No'],
@@ -275,9 +320,15 @@ with tab_auction:
                 if sold_button:
                     if sold_price > 0:
                         df.loc[df['Player No'] == player['Player No'], 'Auctioned'] = True
+                        st.session_state['players_df'] = df.copy()
                         for team in st.session_state['teams']:
                             if team['Team'] == selected_team:
-                                team['Players'].append(dict(player))
+                                team['Players'].append({
+                                    'Player No': player['Player No'],
+                                    'Player Name': player['Player Name'],
+                                    'Role': player['Role'],
+                                    'Price': sold_price
+                                })
                                 team['Spent'] += sold_price
                                 team['Budget'] -= sold_price
                                 break
@@ -304,6 +355,7 @@ with tab_auction:
 
                 if unsold_button:
                     df.loc[df['Player No'] == player['Player No'], 'Auctioned'] = True
+                    st.session_state['players_df'] = df.copy()
                     st.session_state['auction_results'].append({
                         'Player No': player['Player No'],
                         'Player Name': player['Player Name'],
@@ -330,9 +382,7 @@ with tab_auction:
                 st.subheader("💰 Team Budget Overview")
                 st.dataframe(team_df)
 
-        with col_b:
-            # Previously separate budgets replaced by unified table above
-            pass
+        col_b.empty()
 
         st.divider()
         st.subheader("📋 Auction Progress")
@@ -350,7 +400,19 @@ with tab_summary:
         st.dataframe(res_df)
 
         with pd.ExcelWriter("auction_results.xlsx", engine='openpyxl') as writer:
-            res_df.to_excel(writer, index=False, sheet_name="Results")
+            # Export combined results sheet
+            res_df.to_excel(writer, index=False, sheet_name="Combined Results")
+
+            # Export team-wise sheets including Price column; safeguard missing Price fields
+            for team in st.session_state['teams']:
+                players = team.get('Players', [])
+                if players:
+                    for p in players:
+                        if 'Price' not in p:
+                            p['Price'] = 0
+                    df_team = pd.DataFrame(players)[['Player No', 'Player Name', 'Role', 'Price']]
+                    sheet_name = team['Team'][:31] if len(team['Team']) > 31 else team['Team']
+                    df_team.to_excel(writer, index=False, sheet_name=sheet_name)
 
         with open("auction_results.xlsx", "rb") as f:
             st.download_button(
@@ -359,11 +421,4 @@ with tab_summary:
                 file_name="auction_results.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
-
-        st.subheader("👥 Team Details")
-        for team in st.session_state['teams']:
-            with st.expander(f"{team['Team']} (💰 Left: ₹{team['Budget']:,})"):
-                if team['Players']:
-                    st.dataframe(pd.DataFrame(team['Players'])[['Player No', 'Player Name', 'Role']])
-                else:
-                    st.info("No players bought yet.")
+#-----End of file-----
