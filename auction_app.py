@@ -7,28 +7,13 @@ import time
 st.markdown("""
 <style>
 html, body, [class*="css"]  { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; }
-
-/* Table styles */
 table { border-collapse: collapse; width: 100%; }
 thead tr { background-color: #0275d8; color: white; }
 th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; }
 tr:nth-child(even) { background-color: #f9f9f9; }
-
-/* Button hover and animations */
-div.stButton > button:hover { background-color: #f09b13; color: white; transform: scale(1.05); transition: all 0.2s ease-in-out; }
-.stButton > button { transition: all 0.2s ease-in-out; }
-
-/* Metrics styles */
+div.stButton > button:hover { background-color: #0275d8; color: white; }
+.css-ffhzg2 { margin-top: 10px; margin-bottom: 20px; }
 .metric-value { font-size: 2.2rem !important; font-weight: 600 !important; }
-
-/* Countdown bar */
-.countdown-container { width: 100%; background-color: #ddd; border-radius: 10px; overflow: hidden; height: 25px; margin-top: 10px; }
-.countdown-bar { height: 100%; width: 100%; border-radius: 10px; transition: width 1s linear, background-color 1s linear; }
-
-/* Fade-in for player info */
-.fade-in { animation: fadeIn 0.8s ease-in-out; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -87,8 +72,12 @@ with st.sidebar:
     st.markdown("---")
     if st.button("↩️ Undo Last"):
         ok, msg = undo_last()
-        if ok: st.success(msg); st.rerun()
-        else: st.info(msg)
+        if ok:
+            st.success(msg)
+            st.rerun()
+        else:
+            st.info(msg)
+
     col_s1, col_s2 = st.columns(2)
     if col_s1.button("🔁 Restart Auction"):
         st.session_state['player_index'] = 0
@@ -212,47 +201,26 @@ with tab_auction:
         col_a, col_b = st.columns([3,1])
         with col_a:
             st.subheader("🏏 Current Auction")
-            unauctioned_df = df[df['Auctioned'] == False]
-            pick_disabled = unauctioned_df.empty or 'current_player' in st.session_state
-            if st.button("🎲 Pick Random Player", disabled=pick_disabled):
-                available_players = unauctioned_df[~unauctioned_df['Player No'].isin(
-                    [p['Player No'] for p in st.session_state.get('auction_results', [])]
-                )]
-                if not available_players.empty:
-                    selected_player = available_players.sample(1).iloc[0].to_dict()
-                    st.session_state['current_player'] = selected_player
-                    st.session_state['start_time'] = time.time()
-                    st.rerun()
-                else:
-                    st.warning("⚠️ No more players available for auction.")
 
+            pick = st.button("🎲 Pick Random Player", disabled=unauctioned_df.empty)
+            if pick:
+                selected_player = unauctioned_df.sample(1).iloc[0].to_dict()
+                st.session_state['current_player'] = selected_player
+                st.session_state['start_time'] = time.time()
+                st.rerun()
+
+            # Current player details
             if 'current_player' in st.session_state:
                 player = st.session_state['current_player']
-                
-                # Animated player card
-                st.markdown(f"""
-                <div class="fade-in" style="padding: 15px; border-radius: 12px; background: linear-gradient(135deg, #f09b13, #ffdd00); box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-                    <h2 style="margin:0; color:white;">🔥 {player['Player Name']}</h2>
-                    <p style="margin:0; color:white;">Role: {player['Role']} | Player No: {player['Player No']}</p>
-                </div>
-                """, unsafe_allow_html=True)
-                
+                st.markdown(f"**🔥 {player['Player Name']}**")
+                st.markdown(f"**Role:** {player['Role']}  |  **Player No:** {player['Player No']}")
+
                 countdown_seconds = 60
                 elapsed = int(time.time() - st.session_state['start_time']) if st.session_state['start_time'] else 0
                 remaining = max(countdown_seconds - elapsed, 0)
-                
-                # Gradient countdown bar
-                if remaining > 40: color = "#4CAF50"
-                elif remaining > 20: color = "#FFC107"
-                else: color = "#F44336"
-                percentage = int((remaining / countdown_seconds) * 100)
-                st.markdown(f"""
-                <div class="countdown-container">
-                    <div class="countdown-bar" style="width:{percentage}%;background-color:{color};"></div>
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"⏱️ **Time Left:** {remaining} seconds")
 
-                col1, col2, col3 = st.columns([2,1,1])
+                col1, col2, col3 = st.columns([2, 1, 1])
                 team_names = [t['Team'] for t in st.session_state['teams']]
                 selected_team = col1.selectbox("🏷️ Select Team", team_names, key="team_select")
                 sold_price = col2.number_input("💰 Sold Price (₹)", min_value=0, step=10, key="sold_price")
@@ -281,6 +249,7 @@ with tab_auction:
                     st.info("🚫 Player marked as unsold.")
                     st.rerun()
 
+            # Team budgets
             if st.session_state['teams']:
                 team_df = pd.DataFrame([{'Team': t['Team'], 'Spent': t['Spent'], 'Remaining Budget': t['Budget'], 'Total Budget': t['Spent']+t['Budget']} for t in st.session_state['teams']])
                 st.subheader("💰 Team Budget Overview")
