@@ -7,22 +7,68 @@ import time
 st.set_page_config(page_title="Cricket Auction App", layout="wide")
 
 # ----------- CUSTOM CSS FOR UI -----------
+import streamlit as st
+
+# ---------- CUSTOM GLOBAL CSS ----------
 st.markdown("""
 <style>
-html, body, [class*="css"]  { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; }
-table { border-collapse: collapse; width: 100%; transition: all 0.5s ease-in-out; }
-thead tr { background-color: #0275d8; color: white; }
-th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; }
-tr:nth-child(even) { background-color: #f9f9f9; }
-div.stButton > button:hover { background-color: #0275d8; color: white; transform: scale(1.05); transition: 0.3s; }
-.css-ffhzg2 { margin-top: 10px; margin-bottom: 20px; }
-.metric-value { font-size: 2.2rem !important; font-weight: 600 !important; }
-.fade-in { animation: fadeIn 0.8s ease-in-out; }
-.countdown-container { width: 100%; background-color: #ddd; border-radius: 5px; margin-top: 5px; }
-.countdown-bar { height: 15px; border-radius: 5px; transition: width 0.3s ease-in-out; }
-@keyframes fadeIn { 0% {opacity:0;} 100% {opacity:1;} }
+/* Full App Background (Canvas) */
+.stApp {
+    background: linear-gradient(135deg, #ff9a3c, #ff6a00, #ffb347);
+    color: #2d2d2d;
+}
+
+/* Main Container (white glass effect on top of gradient) */
+.block-container {
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 20px;
+    padding: 2rem;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Headings */
+h1, h2, h3, h4 {
+    color: #ff6a00;
+    text-align: center;
+    font-weight: 800;
+}
+
+/* Buttons */
+div.stButton > button {
+    background: linear-gradient(135deg, #ffb347, #ff6a00, #ff9a3c);
+    color: white;
+    border-radius: 12px;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: 0.3s;
+}
+div.stButton > button:hover {
+    background: linear-gradient(135deg, #ff6a00, #ff9a3c, #ffb347);
+    transform: scale(1.05);
+}
+
+/* DataFrames / Tables */
+[data-testid="stDataFrame"] {
+    background: white;
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background: rgba(255, 250, 240, 0.95);
+    border-radius: 16px;
+    padding: 1.2rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
 </style>
 """, unsafe_allow_html=True)
+
+
+
 
 # ---------- SOUND & CONFETTI EFFECT ----------
 sound_base64 = "SUQzAwAAAAAAIVRBTEIAAAAPAAABAAAAAAAAAAAAAAAAAA=="
