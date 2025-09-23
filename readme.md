@@ -57,7 +57,7 @@ cd Cricket-Auction-App
 4. **Run the app**:
 
 ```bash
-streamlit run app.py
+streamlit run auction_app.py
 ```
 
 ---
