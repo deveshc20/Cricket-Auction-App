@@ -2,12 +2,49 @@ import streamlit as st
 import pandas as pd
 import openpyxl
 import time
+import os
+import pickle
+
+SESSION_FILE = "auction_session.pkl"
+
+def autosave_session():
+    session_data = {k: v for k, v in st.session_state.items() if k in [
+        'player_index', 'teams', 'auction_results', 'players_df', 'start_time', 'history', 'current_player'
+    ]}
+    try:
+        with open(SESSION_FILE, "wb") as f:
+            pickle.dump(session_data, f)
+    except Exception as e:
+        st.error(f"Autosave failed: {e}")
+
+def autorestore_session():
+    if os.path.exists(SESSION_FILE):
+        try:
+            with open(SESSION_FILE, "rb") as f:
+                data = pickle.load(f)
+            for k, v in data.items():
+                st.session_state[k] = v
+            st.info("✅ Restored last session automatically.")
+        except Exception as e:
+            st.error(f"Failed to restore session: {e}")
+
+# Restore session at app start
+if st.session_state.get("restored") is None:
+    autorestore_session()
+    st.session_state["restored"] = True
+
+# Autosave session after any auction result or team change
+if st.session_state.get('auction_results') or st.session_state.get('teams'):
+    autosave_session()
+
 
 # ---------- PAGE CONFIG ----------
 st.set_page_config(page_title="Cricket Auction App", layout="wide")
 
 # ----------- CUSTOM CSS FOR UI -----------
 import streamlit as st
+import os
+import pickle
 
 # ---------- CUSTOM GLOBAL CSS ----------
 st.markdown("""
@@ -359,3 +396,5 @@ with tab_summary:
                     df_team.to_excel(writer,index=False,sheet_name=sheet_name)
         with open("auction_results.xlsx","rb") as f:
             st.download_button(label="⬇️ Download Excel File", data=f.read(), file_name="auction_results.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        
+        
