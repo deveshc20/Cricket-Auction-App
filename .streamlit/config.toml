@@ -1,0 +1,14 @@
+[theme]
+primaryColor = "#FF6A00"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f0f0f0"
+textColor = "#000000"
+font = "sans serif"
+
+[server]
+port = 8501
+headless = true
+
+[ui]
+buttonColor = "#FF6A00"
+textColor = "#000000"
