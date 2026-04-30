@@ -2,3 +2,4 @@ streamlit-aggrid
 plotly
 streamlit-option-menu
 lottie
+openpyxl
